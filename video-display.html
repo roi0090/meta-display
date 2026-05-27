@@ -2,658 +2,702 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Meta Display — Video Player</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Meta Browser</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg: #0a0a0f;
-      --surface: #13131a;
-      --surface2: #1c1c28;
-      --border: #2a2a3a;
-      --accent: #6c63ff;
-      --accent2: #a78bfa;
-      --text: #e2e2f0;
-      --muted: #6b6b8a;
-      --danger: #ff4f6d;
+      --bg: #0d0d14;
+      --bar: #13131e;
+      --surface: #1a1a28;
+      --border: #2a2a40;
+      --accent: #7c6fff;
+      --accent2: #b09fff;
+      --text: #e8e8f8;
+      --muted: #60607a;
       --radius: 12px;
     }
 
     html, body {
       height: 100%;
+      overflow: hidden;
       background: var(--bg);
       color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 14px;
-      line-height: 1.5;
+      font-size: 15px;
+      user-select: none;
+      -webkit-user-select: none;
     }
 
-    .app {
-      display: grid;
-      grid-template-rows: auto 1fr;
-      grid-template-columns: 1fr 320px;
-      grid-template-areas:
-        "header header"
-        "main   sidebar";
-      min-height: 100vh;
-      gap: 0;
+    .browser {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
     }
 
-    /* Header */
-    header {
-      grid-area: header;
-      background: var(--surface);
+    /* ── Top Bar ── */
+    .topbar {
+      background: var(--bar);
       border-bottom: 1px solid var(--border);
-      padding: 16px 24px;
+      padding: 10px 14px;
       display: flex;
       align-items: center;
-      gap: 16px;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
-
-    .logo {
-      font-size: 18px;
-      font-weight: 700;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      white-space: nowrap;
+      gap: 10px;
       flex-shrink: 0;
+      z-index: 10;
     }
 
-    .url-form {
+    .nav-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 16px;
+      cursor: pointer;
       display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.15s;
+    }
+
+    .nav-btn:active { background: var(--border); }
+    .nav-btn:disabled { opacity: 0.3; cursor: default; }
+
+    .url-bar {
       flex: 1;
+      display: flex;
+      align-items: center;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0 14px;
       gap: 8px;
-      max-width: 900px;
+      height: 38px;
+      transition: border-color 0.2s;
+    }
+
+    .url-bar:focus-within {
+      border-color: var(--accent);
+    }
+
+    .url-icon {
+      font-size: 13px;
+      color: var(--muted);
+      flex-shrink: 0;
     }
 
     .url-input {
       flex: 1;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 10px 16px;
+      background: none;
+      border: none;
+      outline: none;
       color: var(--text);
       font-size: 14px;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-
-    .url-input:focus {
-      border-color: var(--accent);
     }
 
     .url-input::placeholder { color: var(--muted); }
 
-    .btn {
-      padding: 10px 20px;
-      border-radius: var(--radius);
+    .go-btn {
       border: none;
+      background: none;
+      color: var(--accent2);
+      font-size: 18px;
       cursor: pointer;
-      font-size: 14px;
-      font-weight: 600;
-      transition: opacity 0.15s, transform 0.1s;
-      white-space: nowrap;
+      padding: 0;
+      line-height: 1;
     }
 
-    .btn:active { transform: scale(0.97); }
-    .btn-primary {
-      background: var(--accent);
-      color: #fff;
-    }
-    .btn-primary:hover { opacity: 0.85; }
-
-    .btn-link {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      color: var(--text);
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .btn-link:hover { border-color: var(--accent2); color: var(--accent2); }
-
-    /* Site badges */
-    .site-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 3px 10px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.03em;
-    }
-    .badge-yt  { background: #ff000020; color: #ff4444; border: 1px solid #ff000030; }
-    .badge-vm  { background: #1ab7ea20; color: #1ab7ea; border: 1px solid #1ab7ea30; }
-    .badge-tw  { background: #ff006820; color: #ff6699; border: 1px solid #ff006830; }
-    .badge-vid { background: #00c85320; color: #00c853; border: 1px solid #00c85330; }
-    .badge-web { background: #6c63ff20; color: var(--accent2); border: 1px solid #6c63ff30; }
-
-    /* Main player area */
-    main {
-      grid-area: main;
-      padding: 24px;
+    /* ── Bookmarks Bar ── */
+    .bookmarks-bar {
+      background: var(--bar);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 14px;
       display: flex;
-      flex-direction: column;
-      gap: 16px;
-      overflow-y: auto;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
     }
 
-    .player-wrapper {
-      background: #000;
-      border-radius: var(--radius);
-      overflow: hidden;
-      aspect-ratio: 16/9;
-      width: 100%;
-      position: relative;
+    .bookmarks-bar::-webkit-scrollbar { display: none; }
+
+    .bookmark-btn {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 14px;
+      border-radius: 999px;
       border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: background 0.15s, border-color 0.15s;
     }
 
-    .player-wrapper iframe,
-    .player-wrapper video {
+    .bookmark-btn:hover,
+    .bookmark-btn.active {
+      background: #7c6fff20;
+      border-color: var(--accent);
+      color: var(--accent2);
+    }
+
+    .bookmark-btn .favicon {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      object-fit: contain;
+    }
+
+    .add-bookmark-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      border: 1px dashed var(--border);
+      background: none;
+      color: var(--muted);
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .add-bookmark-btn:hover { color: var(--text); border-color: var(--accent); }
+
+    /* ── Content Area ── */
+    .content {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .frame {
       width: 100%;
       height: 100%;
       border: none;
       display: block;
+      background: #fff;
     }
 
-    .player-placeholder {
+    /* ── Home Screen ── */
+    .home {
       position: absolute;
       inset: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 12px;
-      color: var(--muted);
+      gap: 32px;
+      padding: 40px 20px;
+      background: var(--bg);
     }
 
-    .player-placeholder svg {
-      opacity: 0.3;
+    .home.hidden { display: none; }
+
+    .home-logo {
+      font-size: 28px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.5px;
     }
 
-    .player-placeholder p {
-      font-size: 15px;
+    .home-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      width: 100%;
+      max-width: 500px;
     }
 
-    .now-playing {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px;
-      display: none;
-    }
-
-    .now-playing.visible { display: block; }
-
-    .now-playing-label {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-
-    .now-playing-url {
-      word-break: break-all;
-      color: var(--accent2);
-      font-size: 13px;
-    }
-
-    /* Sidebar */
-    aside {
-      grid-area: sidebar;
-      background: var(--surface);
-      border-left: 1px solid var(--border);
+    .home-icon {
       display: flex;
       flex-direction: column;
-      overflow: hidden;
-    }
-
-    .sidebar-header {
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
       align-items: center;
-      justify-content: space-between;
-    }
-
-    .sidebar-title {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text);
-    }
-
-    .btn-clear {
-      background: none;
+      gap: 8px;
+      padding: 16px 8px;
+      border-radius: var(--radius);
       border: 1px solid var(--border);
-      color: var(--muted);
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-size: 11px;
+      background: var(--surface);
       cursor: pointer;
-      transition: color 0.15s, border-color 0.15s;
+      transition: background 0.15s, border-color 0.15s;
     }
 
-    .btn-clear:hover {
-      color: var(--danger);
-      border-color: var(--danger);
+    .home-icon:hover {
+      background: #7c6fff15;
+      border-color: var(--accent);
     }
 
-    .history-list {
-      flex: 1;
-      overflow-y: auto;
-      padding: 8px;
+    .home-icon .icon-img {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      object-fit: contain;
+      background: #fff;
+      padding: 4px;
     }
 
-    .history-empty {
-      padding: 40px 20px;
-      text-align: center;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .history-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      padding: 10px 12px;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background 0.15s;
-      position: relative;
-    }
-
-    .history-item:hover { background: var(--surface2); }
-    .history-item.active { background: #6c63ff15; }
-
-    .history-icon {
-      width: 32px;
-      height: 32px;
-      border-radius: 6px;
-      background: var(--surface2);
+    .home-icon .icon-emoji {
+      font-size: 32px;
+      line-height: 40px;
+      width: 40px;
+      height: 40px;
       display: flex;
       align-items: center;
       justify-content: center;
-      flex-shrink: 0;
-      font-size: 14px;
     }
 
-    .history-info {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .history-url {
-      font-size: 12px;
-      color: var(--text);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin-bottom: 3px;
-    }
-
-    .history-meta {
+    .home-icon span {
       font-size: 11px;
       color: var(--muted);
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      width: 100%;
+    }
+
+    /* ── Blocked overlay ── */
+    .blocked {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      background: var(--bg);
+      text-align: center;
+      padding: 40px;
+    }
+
+    .blocked.hidden { display: none; }
+
+    .blocked-icon { font-size: 48px; }
+    .blocked-title { font-size: 18px; font-weight: 600; }
+    .blocked-msg { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+    .open-new-tab-btn {
+      padding: 10px 24px;
+      border-radius: var(--radius);
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* ── Loading indicator ── */
+    .loading-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 1px;
+      width: 0%;
+      transition: width 0.3s;
+      z-index: 5;
+    }
+
+    /* ── Add bookmark modal ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: #00000090;
       display: flex;
       align-items: center;
-      gap: 6px;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
     }
 
-    .history-delete {
-      background: none;
-      border: none;
-      color: var(--muted);
-      cursor: pointer;
-      padding: 2px 5px;
-      border-radius: 4px;
-      font-size: 14px;
-      opacity: 0;
-      transition: opacity 0.15s, color 0.15s;
-      flex-shrink: 0;
-    }
+    .modal-overlay.hidden { display: none; }
 
-    .history-item:hover .history-delete {
-      opacity: 1;
-    }
-
-    .history-delete:hover { color: var(--danger); }
-
-    /* Toast */
-    .toast {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%) translateY(80px);
-      background: var(--surface2);
+    .modal {
+      background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 10px 20px;
-      font-size: 13px;
+      border-radius: 16px;
+      padding: 24px;
+      width: 100%;
+      max-width: 360px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .modal input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
       color: var(--text);
-      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-      z-index: 999;
-      white-space: nowrap;
-      pointer-events: none;
+      font-size: 14px;
+      outline: none;
     }
 
-    .toast.show {
-      transform: translateX(-50%) translateY(0);
+    .modal input:focus { border-color: var(--accent); }
+    .modal input::placeholder { color: var(--muted); }
+
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
     }
 
-    /* Scrollbar */
-    ::-webkit-scrollbar { width: 5px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+    .modal-cancel {
+      padding: 9px 18px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: none;
+      color: var(--muted);
+      font-size: 14px;
+      cursor: pointer;
+    }
 
-    @media (max-width: 700px) {
-      .app {
-        grid-template-columns: 1fr;
-        grid-template-areas:
-          "header"
-          "main"
-          "sidebar";
-      }
-      aside {
-        border-left: none;
-        border-top: 1px solid var(--border);
-        max-height: 300px;
-      }
+    .modal-save {
+      padding: 9px 18px;
+      border-radius: 10px;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
-<div class="app">
+<div class="browser">
 
-  <header>
-    <div class="logo">⬡ Meta Display</div>
-    <button class="btn btn-link" onclick="playUrl('https://missai.ai')">
-      ✦ missai.ai
-    </button>
-    <form class="url-form" id="urlForm">
-      <input
-        class="url-input"
-        id="urlInput"
-        type="url"
-        placeholder="YouTube / Vimeo / Twitter(X) / 動画URL を貼り付け..."
-        autocomplete="off"
-        spellcheck="false"
-      >
-      <button class="btn btn-primary" type="submit">再生</button>
-    </form>
-  </header>
+  <!-- Top nav bar -->
+  <div class="topbar">
+    <button class="nav-btn" id="backBtn" title="戻る" disabled>‹</button>
+    <button class="nav-btn" id="fwdBtn"  title="進む" disabled>›</button>
+    <button class="nav-btn" id="reloadBtn" title="更新">↻</button>
+    <div class="url-bar">
+      <span class="url-icon">🔒</span>
+      <input class="url-input" id="urlInput" type="url"
+        placeholder="URLまたはサイト名を入力..."
+        autocomplete="off" spellcheck="false">
+      <button class="go-btn" id="goBtn">→</button>
+    </div>
+    <button class="nav-btn" id="homeBtn" title="ホーム">⌂</button>
+  </div>
 
-  <main>
-    <div class="player-wrapper" id="playerWrapper">
-      <div class="player-placeholder" id="placeholder">
-        <svg width="56" height="56" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
-        </svg>
-        <p>URLを入力して動画を再生</p>
-      </div>
-    </div>
-    <div class="now-playing" id="nowPlaying">
-      <div class="now-playing-label">再生中</div>
-      <div class="now-playing-url" id="nowPlayingUrl"></div>
-    </div>
-  </main>
+  <!-- Bookmarks bar -->
+  <div class="bookmarks-bar" id="bookmarksBar"></div>
 
-  <aside>
-    <div class="sidebar-header">
-      <span class="sidebar-title">履歴</span>
-      <button class="btn-clear" id="clearBtn">すべて削除</button>
-    </div>
-    <div class="history-list" id="historyList">
-      <div class="history-empty" id="historyEmpty">履歴はありません</div>
-    </div>
-  </aside>
+  <!-- Content -->
+  <div class="content" id="content">
+    <div class="loading-bar" id="loadingBar"></div>
 
+    <!-- Home screen -->
+    <div class="home" id="homeScreen">
+      <div class="home-logo">⬡ Meta Browser</div>
+      <div class="home-grid" id="homeGrid"></div>
+    </div>
+
+    <!-- Blocked screen -->
+    <div class="blocked hidden" id="blockedScreen">
+      <div class="blocked-icon">🚫</div>
+      <div class="blocked-title">表示できませんでした</div>
+      <div class="blocked-msg" id="blockedMsg">このサイトはiFrame内での表示を<br>ブロックしています。</div>
+      <button class="open-new-tab-btn" id="openNewTabBtn">新しいタブで開く</button>
+    </div>
+
+    <!-- Browser iframe -->
+    <iframe class="frame hidden" id="frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-top-navigation-by-user-activation" allow="autoplay; fullscreen; camera; microphone; payment"></iframe>
+  </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<!-- Add bookmark modal -->
+<div class="modal-overlay hidden" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-title">ブックマークを追加</div>
+    <input id="modalName" placeholder="名前 (例: Google)" />
+    <input id="modalUrl"  placeholder="URL (例: https://google.com)" type="url" />
+    <div class="modal-actions">
+      <button class="modal-cancel" id="modalCancel">キャンセル</button>
+      <button class="modal-save"   id="modalSave">追加</button>
+    </div>
+  </div>
+</div>
 
 <script>
-const HISTORY_KEY = 'meta_display_history';
-const MAX_HISTORY = 50;
+// ── Default bookmarks ────────────────────────────────────────────────────
+const DEFAULT_BOOKMARKS = [
+  { name: 'missai.ai', url: 'https://missai.ai',        favicon: 'https://missai.ai/favicon.ico' },
+  { name: 'YouTube',   url: 'https://www.youtube.com',  favicon: 'https://www.youtube.com/favicon.ico' },
+  { name: 'Google',    url: 'https://www.google.com',   favicon: 'https://www.google.com/favicon.ico' },
+  { name: 'X (Twitter)',url:'https://x.com',            favicon: 'https://x.com/favicon.ico' },
+];
 
-// ── URL detection ──────────────────────────────────────────────────────────
+const STORAGE_KEY = 'meta_browser_bookmarks';
 
-function detectType(url) {
+function loadBookmarks() {
   try {
-    const u = new URL(url);
-    const host = u.hostname.replace('www.', '');
-
-    // YouTube
-    if (host === 'youtube.com' || host === 'youtu.be' || host === 'm.youtube.com') {
-      let videoId = u.searchParams.get('v');
-      if (!videoId && host === 'youtu.be') videoId = u.pathname.slice(1).split('/')[0];
-      if (!videoId && u.pathname.startsWith('/embed/')) videoId = u.pathname.split('/embed/')[1].split('/')[0];
-      if (!videoId && u.pathname.startsWith('/shorts/')) videoId = u.pathname.split('/shorts/')[1].split('/')[0];
-      if (videoId) return { type: 'youtube', id: videoId.split('?')[0] };
-    }
-
-    // Vimeo
-    if (host === 'vimeo.com' || host === 'player.vimeo.com') {
-      const match = u.pathname.match(/\/(?:video\/)?(\d+)/);
-      if (match) return { type: 'vimeo', id: match[1] };
-    }
-
-    // Twitter / X
-    if (host === 'twitter.com' || host === 'x.com') {
-      return { type: 'twitter', url };
-    }
-
-    // Direct video file
-    const ext = u.pathname.split('.').pop().toLowerCase().split('?')[0];
-    if (['mp4', 'webm', 'ogg', 'mov', 'm4v'].includes(ext)) {
-      return { type: 'video', url };
-    }
-
-    // Fallback: try iframe embed
-    return { type: 'iframe', url };
-  } catch {
-    return null;
-  }
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored ? JSON.parse(stored) : DEFAULT_BOOKMARKS;
+  } catch { return DEFAULT_BOOKMARKS; }
 }
 
-function buildEmbed(info) {
-  switch (info.type) {
-    case 'youtube':
-      return `<iframe src="https://www.youtube.com/embed/${info.id}?autoplay=1&rel=0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
-    case 'vimeo':
-      return `<iframe src="https://player.vimeo.com/video/${info.id}?autoplay=1" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
-    case 'video':
-      return `<video src="${info.url}" controls autoplay style="width:100%;height:100%;background:#000;"></video>`;
-    case 'twitter':
-      // Twitter video embed via twitframe
-      const encoded = encodeURIComponent(info.url);
-      return `<iframe src="https://twitframe.com/show?url=${encoded}" allowfullscreen scrolling="no"></iframe>`;
-    case 'iframe':
-      return `<iframe src="${info.url}" allowfullscreen allow="autoplay; fullscreen; camera; microphone" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-top-navigation-by-user-activation"></iframe>`;
-    default:
-      return null;
-  }
+function saveBookmarks(list) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
 }
 
-function siteIcon(type) {
-  const icons = {
-    youtube: '▶',
-    vimeo: '◈',
-    twitter: '𝕏',
-    video:  '◉',
-    iframe: '⬡',
-  };
-  return icons[type] || '⬡';
-}
-
-function siteBadgeClass(type) {
-  const cls = { youtube: 'badge-yt', vimeo: 'badge-vm', twitter: 'badge-tw', video: 'badge-vid' };
-  return cls[type] || 'badge-web';
-}
-
-function shortUrl(url) {
-  try {
-    const u = new URL(url);
-    return (u.hostname + u.pathname).replace(/\/$/, '').substring(0, 50);
-  } catch { return url.substring(0, 50); }
-}
-
-// ── History ────────────────────────────────────────────────────────────────
-
-function loadHistory() {
-  try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; }
-  catch { return []; }
-}
-
-function saveHistory(list) {
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(list));
-}
-
-function addToHistory(url, type) {
-  let list = loadHistory();
-  list = list.filter(h => h.url !== url);
-  list.unshift({ url, type, ts: Date.now() });
-  if (list.length > MAX_HISTORY) list = list.slice(0, MAX_HISTORY);
-  saveHistory(list);
-  renderHistory(url);
-}
-
-function removeFromHistory(url) {
-  let list = loadHistory().filter(h => h.url !== url);
-  saveHistory(list);
-  renderHistory(currentUrl);
-}
-
-function clearHistory() {
-  saveHistory([]);
-  renderHistory(null);
-}
-
-function formatTime(ts) {
-  const d = new Date(ts);
-  const now = new Date();
-  if (d.toDateString() === now.toDateString()) {
-    return d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
-  }
-  return d.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' });
-}
-
+// ── State ────────────────────────────────────────────────────────────────
+let bookmarks = loadBookmarks();
 let currentUrl = null;
+let history = [];
+let historyIndex = -1;
+let loadTimer = null;
+let blockedUrl = null;
 
-function renderHistory(activeUrl) {
-  const list = loadHistory();
-  const container = document.getElementById('historyList');
-  const empty = document.getElementById('historyEmpty');
+// ── DOM refs ──────────────────────────────────────────────────────────────
+const frame        = document.getElementById('frame');
+const urlInput     = document.getElementById('urlInput');
+const backBtn      = document.getElementById('backBtn');
+const fwdBtn       = document.getElementById('fwdBtn');
+const reloadBtn    = document.getElementById('reloadBtn');
+const homeBtn      = document.getElementById('homeBtn');
+const goBtn        = document.getElementById('goBtn');
+const homeScreen   = document.getElementById('homeScreen');
+const blockedScreen= document.getElementById('blockedScreen');
+const blockedMsg   = document.getElementById('blockedMsg');
+const loadingBar   = document.getElementById('loadingBar');
+const bookmarksBar = document.getElementById('bookmarksBar');
+const homeGrid     = document.getElementById('homeGrid');
 
-  if (list.length === 0) {
-    container.innerHTML = '<div class="history-empty">履歴はありません</div>';
-    return;
-  }
-
-  empty && empty.remove();
-  container.innerHTML = list.map(h => `
-    <div class="history-item${h.url === activeUrl ? ' active' : ''}" data-url="${encodeURIComponent(h.url)}">
-      <div class="history-icon">${siteIcon(h.type)}</div>
-      <div class="history-info">
-        <div class="history-url">${shortUrl(h.url)}</div>
-        <div class="history-meta">
-          <span class="site-badge ${siteBadgeClass(h.type)}">${h.type}</span>
-          <span>${formatTime(h.ts)}</span>
-        </div>
-      </div>
-      <button class="history-delete" data-del="${encodeURIComponent(h.url)}" title="削除">×</button>
-    </div>
-  `).join('');
-
-  // events
-  container.querySelectorAll('.history-item').forEach(el => {
-    el.addEventListener('click', (e) => {
-      if (e.target.closest('.history-delete')) return;
-      playUrl(decodeURIComponent(el.dataset.url));
-    });
+// ── Rendering ─────────────────────────────────────────────────────────────
+function renderBookmarksBar() {
+  bookmarksBar.innerHTML = '';
+  bookmarks.forEach((b, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'bookmark-btn' + (currentUrl === b.url ? ' active' : '');
+    btn.innerHTML = `<img class="favicon" src="${b.favicon}" onerror="this.style.display='none'"> ${b.name}`;
+    btn.addEventListener('click', () => navigate(b.url));
+    bookmarksBar.appendChild(btn);
   });
+  // Add button
+  const addBtn = document.createElement('button');
+  addBtn.className = 'add-bookmark-btn';
+  addBtn.title = 'ブックマークを追加';
+  addBtn.textContent = '+';
+  addBtn.addEventListener('click', openModal);
+  bookmarksBar.appendChild(addBtn);
+}
 
-  container.querySelectorAll('.history-delete').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      removeFromHistory(decodeURIComponent(btn.dataset.del));
-    });
+function renderHomeGrid() {
+  homeGrid.innerHTML = '';
+  bookmarks.forEach((b) => {
+    const el = document.createElement('div');
+    el.className = 'home-icon';
+    el.innerHTML = `
+      <img class="icon-img" src="${b.favicon}" onerror="this.outerHTML='<div class=\\'icon-emoji\\'>🌐</div>'">
+      <span>${b.name}</span>
+    `;
+    el.addEventListener('click', () => navigate(b.url));
+    homeGrid.appendChild(el);
   });
 }
 
-// ── Player ────────────────────────────────────────────────────────────────
-
-function playUrl(url) {
-  const info = detectType(url);
-  if (!info) {
-    toast('対応していないURLです');
-    return;
-  }
-
-  const html = buildEmbed(info);
-  if (!html) {
-    toast('再生できませんでした');
-    return;
-  }
-
-  const wrapper = document.getElementById('playerWrapper');
-  wrapper.innerHTML = html;
-
-  currentUrl = url;
-  document.getElementById('nowPlayingUrl').textContent = url;
-  document.getElementById('nowPlaying').classList.add('visible');
-  document.getElementById('urlInput').value = url;
-
-  addToHistory(url, info.type);
+// ── Navigation ────────────────────────────────────────────────────────────
+function normalizeUrl(input) {
+  input = input.trim();
+  if (!input) return null;
+  if (input.startsWith('http://') || input.startsWith('https://')) return input;
+  // looks like domain
+  if (/^[\w-]+\.\w+/.test(input)) return 'https://' + input;
+  // treat as Google search
+  return 'https://www.google.com/search?q=' + encodeURIComponent(input);
 }
 
-// ── Toast ─────────────────────────────────────────────────────────────────
-
-let toastTimer;
-function toast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
-}
-
-// ── Events ────────────────────────────────────────────────────────────────
-
-document.getElementById('urlForm').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const url = document.getElementById('urlInput').value.trim();
+function navigate(url) {
   if (!url) return;
-  playUrl(url);
-});
+  url = normalizeUrl(url);
+  if (!url) return;
 
-document.getElementById('clearBtn').addEventListener('click', () => {
-  if (confirm('履歴をすべて削除しますか？')) {
-    clearHistory();
-    toast('履歴を削除しました');
+  // trim forward history
+  history = history.slice(0, historyIndex + 1);
+  history.push(url);
+  historyIndex = history.length - 1;
+
+  load(url);
+}
+
+function load(url) {
+  currentUrl = url;
+  urlInput.value = url;
+
+  // show loading
+  startLoading();
+
+  // hide home & blocked, show frame
+  homeScreen.classList.add('hidden');
+  blockedScreen.classList.add('hidden');
+  frame.classList.remove('hidden');
+
+  // Update icon based on https
+  document.querySelector('.url-icon').textContent = url.startsWith('https') ? '🔒' : '🔓';
+
+  // Set iframe src
+  frame.src = url;
+
+  updateNavBtns();
+  renderBookmarksBar();
+}
+
+function startLoading() {
+  clearTimeout(loadTimer);
+  loadingBar.style.width = '40%';
+  loadTimer = setTimeout(() => { loadingBar.style.width = '80%'; }, 800);
+}
+
+function finishLoading() {
+  clearTimeout(loadTimer);
+  loadingBar.style.width = '100%';
+  setTimeout(() => { loadingBar.style.width = '0%'; }, 400);
+}
+
+function goHome() {
+  currentUrl = null;
+  urlInput.value = '';
+  frame.src = 'about:blank';
+  frame.classList.add('hidden');
+  blockedScreen.classList.add('hidden');
+  homeScreen.classList.remove('hidden');
+  renderBookmarksBar();
+  renderHomeGrid();
+}
+
+function updateNavBtns() {
+  backBtn.disabled = historyIndex <= 0;
+  fwdBtn.disabled  = historyIndex >= history.length - 1;
+}
+
+// ── iframe events ─────────────────────────────────────────────────────────
+frame.addEventListener('load', () => {
+  finishLoading();
+  // Try to detect blocked (about:blank means it may have been blocked)
+  try {
+    const loc = frame.contentWindow.location.href;
+    if (loc === 'about:blank' && currentUrl && currentUrl !== 'about:blank') {
+      showBlocked(currentUrl);
+    }
+  } catch(e) {
+    // cross-origin: that's fine, site is loaded
+    finishLoading();
   }
 });
 
-// Paste URL anywhere (when not focused on input)
-document.addEventListener('paste', (e) => {
-  if (document.activeElement.id === 'urlInput') return;
-  const text = e.clipboardData.getData('text').trim();
-  if (text.startsWith('http')) {
-    document.getElementById('urlInput').value = text;
-    playUrl(text);
+frame.addEventListener('error', () => {
+  finishLoading();
+  showBlocked(currentUrl);
+});
+
+function showBlocked(url) {
+  blockedUrl = url;
+  frame.classList.add('hidden');
+  blockedScreen.classList.remove('hidden');
+  finishLoading();
+}
+
+document.getElementById('openNewTabBtn').addEventListener('click', () => {
+  if (blockedUrl) window.open(blockedUrl, '_blank');
+});
+
+// ── Controls ──────────────────────────────────────────────────────────────
+backBtn.addEventListener('click', () => {
+  if (historyIndex > 0) {
+    historyIndex--;
+    load(history[historyIndex]);
   }
 });
 
-// Init
-renderHistory(null);
+fwdBtn.addEventListener('click', () => {
+  if (historyIndex < history.length - 1) {
+    historyIndex++;
+    load(history[historyIndex]);
+  }
+});
+
+reloadBtn.addEventListener('click', () => {
+  if (currentUrl) load(currentUrl);
+});
+
+homeBtn.addEventListener('click', goHome);
+
+goBtn.addEventListener('click', () => navigate(urlInput.value));
+
+urlInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') navigate(urlInput.value);
+});
+
+// ── Add Bookmark Modal ────────────────────────────────────────────────────
+const modalOverlay = document.getElementById('modalOverlay');
+const modalName    = document.getElementById('modalName');
+const modalUrl     = document.getElementById('modalUrl');
+
+function openModal() {
+  // Pre-fill with current page if any
+  if (currentUrl) {
+    modalUrl.value = currentUrl;
+    try {
+      modalName.value = new URL(currentUrl).hostname.replace('www.', '');
+    } catch {}
+  } else {
+    modalUrl.value = '';
+    modalName.value = '';
+  }
+  modalOverlay.classList.remove('hidden');
+  modalName.focus();
+}
+
+document.getElementById('modalCancel').addEventListener('click', () => {
+  modalOverlay.classList.add('hidden');
+});
+
+document.getElementById('modalSave').addEventListener('click', () => {
+  const name = modalName.value.trim();
+  let url = modalUrl.value.trim();
+  if (!name || !url) return;
+  if (!/^https?:\/\//.test(url)) url = 'https://' + url;
+  const favicon = `https://${new URL(url).hostname}/favicon.ico`;
+  bookmarks.push({ name, url, favicon });
+  saveBookmarks(bookmarks);
+  renderBookmarksBar();
+  renderHomeGrid();
+  modalOverlay.classList.add('hidden');
+});
+
+modalOverlay.addEventListener('click', (e) => {
+  if (e.target === modalOverlay) modalOverlay.classList.add('hidden');
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────
+renderBookmarksBar();
+renderHomeGrid();
 </script>
 </body>
 </html>
