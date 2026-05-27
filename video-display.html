@@ -315,9 +315,23 @@ const homeScreen  = document.getElementById('homeScreen');
 const setupBanner = document.getElementById('setupBanner');
 
 // ── Proxy ─────────────────────────────────────────────────────────────────
+// These domains block proxy/datacenter IPs — skip proxy for them
+const NO_PROXY_DOMAINS = [
+  'google.com', 'youtube.com', 'youtu.be', 'twitter.com', 'x.com',
+  'facebook.com', 'instagram.com', 'netflix.com', 'amazon.com',
+];
+
+function needsProxy(url) {
+  if (!proxyUrl) return false;
+  try {
+    const host = new URL(url).hostname.replace('www.', '');
+    return !NO_PROXY_DOMAINS.some(d => host === d || host.endsWith('.' + d));
+  } catch { return false; }
+}
+
 function iframeSrc(url) {
-  if (!proxyUrl) return url;  // no proxy → try direct (may show white)
-  return `${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(url)}`;
+  if (needsProxy(url)) return `${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(url)}`;
+  return url;
 }
 
 function faviconFor(url) {
