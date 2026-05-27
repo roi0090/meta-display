@@ -375,9 +375,9 @@
 
   <header>
     <div class="logo">⬡ Meta Display</div>
-    <a class="btn btn-link" href="https://missai.ai" target="_blank" rel="noopener">
+    <button class="btn btn-link" onclick="playUrl('https://missai.ai')">
       ✦ missai.ai
-    </a>
+    </button>
     <form class="url-form" id="urlForm">
       <input
         class="url-input"
@@ -477,7 +477,7 @@ function buildEmbed(info) {
       const encoded = encodeURIComponent(info.url);
       return `<iframe src="https://twitframe.com/show?url=${encoded}" allowfullscreen scrolling="no"></iframe>`;
     case 'iframe':
-      return `<iframe src="${info.url}" allowfullscreen sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>`;
+      return `<iframe src="${info.url}" allowfullscreen allow="autoplay; fullscreen; camera; microphone" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-top-navigation-by-user-activation"></iframe>`;
     default:
       return null;
   }
