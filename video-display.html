@@ -108,6 +108,17 @@
     }
     .btn-primary:hover { opacity: 0.85; }
 
+    .btn-link {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-link:hover { border-color: var(--accent2); color: var(--accent2); }
+
     /* Site badges */
     .site-badge {
       display: inline-flex;
@@ -364,6 +375,9 @@
 
   <header>
     <div class="logo">⬡ Meta Display</div>
+    <a class="btn btn-link" href="https://missai.ai" target="_blank" rel="noopener">
+      ✦ missai.ai
+    </a>
     <form class="url-form" id="urlForm">
       <input
         class="url-input"
