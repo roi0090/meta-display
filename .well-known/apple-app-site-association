@@ -1,0 +1,12 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["P87B6QKA3A.MH.GlassSpeed"],
+        "components": [
+          { "/": "/*" }
+        ]
+      }
+    ]
+  }
+}

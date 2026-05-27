@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meta Display — Video Player</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #13131a;
+      --surface2: #1c1c28;
+      --border: #2a2a3a;
+      --accent: #6c63ff;
+      --accent2: #a78bfa;
+      --text: #e2e2f0;
+      --muted: #6b6b8a;
+      --danger: #ff4f6d;
+      --radius: 12px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .app {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      grid-template-columns: 1fr 320px;
+      grid-template-areas:
+        "header header"
+        "main   sidebar";
+      min-height: 100vh;
+      gap: 0;
+    }
+
+    /* Header */
+    header {
+      grid-area: header;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      font-size: 18px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .url-form {
+      display: flex;
+      flex: 1;
+      gap: 8px;
+      max-width: 900px;
+    }
+
+    .url-input {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 16px;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .url-input:focus {
+      border-color: var(--accent);
+    }
+
+    .url-input::placeholder { color: var(--muted); }
+
+    .btn {
+      padding: 10px 20px;
+      border-radius: var(--radius);
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: opacity 0.15s, transform 0.1s;
+      white-space: nowrap;
+    }
+
+    .btn:active { transform: scale(0.97); }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover { opacity: 0.85; }
+
+    /* Site badges */
+    .site-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+    .badge-yt  { background: #ff000020; color: #ff4444; border: 1px solid #ff000030; }
+    .badge-vm  { background: #1ab7ea20; color: #1ab7ea; border: 1px solid #1ab7ea30; }
+    .badge-tw  { background: #ff006820; color: #ff6699; border: 1px solid #ff006830; }
+    .badge-vid { background: #00c85320; color: #00c853; border: 1px solid #00c85330; }
+    .badge-web { background: #6c63ff20; color: var(--accent2); border: 1px solid #6c63ff30; }
+
+    /* Main player area */
+    main {
+      grid-area: main;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+    }
+
+    .player-wrapper {
+      background: #000;
+      border-radius: var(--radius);
+      overflow: hidden;
+      aspect-ratio: 16/9;
+      width: 100%;
+      position: relative;
+      border: 1px solid var(--border);
+    }
+
+    .player-wrapper iframe,
+    .player-wrapper video {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
+
+    .player-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      color: var(--muted);
+    }
+
+    .player-placeholder svg {
+      opacity: 0.3;
+    }
+
+    .player-placeholder p {
+      font-size: 15px;
+    }
+
+    .now-playing {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      display: none;
+    }
+
+    .now-playing.visible { display: block; }
+
+    .now-playing-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .now-playing-url {
+      word-break: break-all;
+      color: var(--accent2);
+      font-size: 13px;
+    }
+
+    /* Sidebar */
+    aside {
+      grid-area: sidebar;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .sidebar-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .btn-clear {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .btn-clear:hover {
+      color: var(--danger);
+      border-color: var(--danger);
+    }
+
+    .history-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .history-empty {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .history-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+      position: relative;
+    }
+
+    .history-item:hover { background: var(--surface2); }
+    .history-item.active { background: #6c63ff15; }
+
+    .history-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      background: var(--surface2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 14px;
+    }
+
+    .history-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .history-url {
+      font-size: 12px;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 3px;
+    }
+
+    .history-meta {
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .history-delete {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-size: 14px;
+      opacity: 0;
+      transition: opacity 0.15s, color 0.15s;
+      flex-shrink: 0;
+    }
+
+    .history-item:hover .history-delete {
+      opacity: 1;
+    }
+
+    .history-delete:hover { color: var(--danger); }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 20px;
+      font-size: 13px;
+      color: var(--text);
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      z-index: 999;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+    @media (max-width: 700px) {
+      .app {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+          "header"
+          "main"
+          "sidebar";
+      }
+      aside {
+        border-left: none;
+        border-top: 1px solid var(--border);
+        max-height: 300px;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="logo">⬡ Meta Display</div>
+    <form class="url-form" id="urlForm">
+      <input
+        class="url-input"
+        id="urlInput"
+        type="url"
+        placeholder="YouTube / Vimeo / Twitter(X) / 動画URL を貼り付け..."
+        autocomplete="off"
+        spellcheck="false"
+      >
+      <button class="btn btn-primary" type="submit">再生</button>
+    </form>
+  </header>
+
+  <main>
+    <div class="player-wrapper" id="playerWrapper">
+      <div class="player-placeholder" id="placeholder">
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
+        </svg>
+        <p>URLを入力して動画を再生</p>
+      </div>
+    </div>
+    <div class="now-playing" id="nowPlaying">
+      <div class="now-playing-label">再生中</div>
+      <div class="now-playing-url" id="nowPlayingUrl"></div>
+    </div>
+  </main>
+
+  <aside>
+    <div class="sidebar-header">
+      <span class="sidebar-title">履歴</span>
+      <button class="btn-clear" id="clearBtn">すべて削除</button>
+    </div>
+    <div class="history-list" id="historyList">
+      <div class="history-empty" id="historyEmpty">履歴はありません</div>
+    </div>
+  </aside>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const HISTORY_KEY = 'meta_display_history';
+const MAX_HISTORY = 50;
+
+// ── URL detection ──────────────────────────────────────────────────────────
+
+function detectType(url) {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace('www.', '');
+
+    // YouTube
+    if (host === 'youtube.com' || host === 'youtu.be' || host === 'm.youtube.com') {
+      let videoId = u.searchParams.get('v');
+      if (!videoId && host === 'youtu.be') videoId = u.pathname.slice(1).split('/')[0];
+      if (!videoId && u.pathname.startsWith('/embed/')) videoId = u.pathname.split('/embed/')[1].split('/')[0];
+      if (!videoId && u.pathname.startsWith('/shorts/')) videoId = u.pathname.split('/shorts/')[1].split('/')[0];
+      if (videoId) return { type: 'youtube', id: videoId.split('?')[0] };
+    }
+
+    // Vimeo
+    if (host === 'vimeo.com' || host === 'player.vimeo.com') {
+      const match = u.pathname.match(/\/(?:video\/)?(\d+)/);
+      if (match) return { type: 'vimeo', id: match[1] };
+    }
+
+    // Twitter / X
+    if (host === 'twitter.com' || host === 'x.com') {
+      return { type: 'twitter', url };
+    }
+
+    // Direct video file
+    const ext = u.pathname.split('.').pop().toLowerCase().split('?')[0];
+    if (['mp4', 'webm', 'ogg', 'mov', 'm4v'].includes(ext)) {
+      return { type: 'video', url };
+    }
+
+    // Fallback: try iframe embed
+    return { type: 'iframe', url };
+  } catch {
+    return null;
+  }
+}
+
+function buildEmbed(info) {
+  switch (info.type) {
+    case 'youtube':
+      return `<iframe src="https://www.youtube.com/embed/${info.id}?autoplay=1&rel=0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
+    case 'vimeo':
+      return `<iframe src="https://player.vimeo.com/video/${info.id}?autoplay=1" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
+    case 'video':
+      return `<video src="${info.url}" controls autoplay style="width:100%;height:100%;background:#000;"></video>`;
+    case 'twitter':
+      // Twitter video embed via twitframe
+      const encoded = encodeURIComponent(info.url);
+      return `<iframe src="https://twitframe.com/show?url=${encoded}" allowfullscreen scrolling="no"></iframe>`;
+    case 'iframe':
+      return `<iframe src="${info.url}" allowfullscreen sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>`;
+    default:
+      return null;
+  }
+}
+
+function siteIcon(type) {
+  const icons = {
+    youtube: '▶',
+    vimeo: '◈',
+    twitter: '𝕏',
+    video:  '◉',
+    iframe: '⬡',
+  };
+  return icons[type] || '⬡';
+}
+
+function siteBadgeClass(type) {
+  const cls = { youtube: 'badge-yt', vimeo: 'badge-vm', twitter: 'badge-tw', video: 'badge-vid' };
+  return cls[type] || 'badge-web';
+}
+
+function shortUrl(url) {
+  try {
+    const u = new URL(url);
+    return (u.hostname + u.pathname).replace(/\/$/, '').substring(0, 50);
+  } catch { return url.substring(0, 50); }
+}
+
+// ── History ────────────────────────────────────────────────────────────────
+
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; }
+  catch { return []; }
+}
+
+function saveHistory(list) {
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(list));
+}
+
+function addToHistory(url, type) {
+  let list = loadHistory();
+  list = list.filter(h => h.url !== url);
+  list.unshift({ url, type, ts: Date.now() });
+  if (list.length > MAX_HISTORY) list = list.slice(0, MAX_HISTORY);
+  saveHistory(list);
+  renderHistory(url);
+}
+
+function removeFromHistory(url) {
+  let list = loadHistory().filter(h => h.url !== url);
+  saveHistory(list);
+  renderHistory(currentUrl);
+}
+
+function clearHistory() {
+  saveHistory([]);
+  renderHistory(null);
+}
+
+function formatTime(ts) {
+  const d = new Date(ts);
+  const now = new Date();
+  if (d.toDateString() === now.toDateString()) {
+    return d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+  }
+  return d.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' });
+}
+
+let currentUrl = null;
+
+function renderHistory(activeUrl) {
+  const list = loadHistory();
+  const container = document.getElementById('historyList');
+  const empty = document.getElementById('historyEmpty');
+
+  if (list.length === 0) {
+    container.innerHTML = '<div class="history-empty">履歴はありません</div>';
+    return;
+  }
+
+  empty && empty.remove();
+  container.innerHTML = list.map(h => `
+    <div class="history-item${h.url === activeUrl ? ' active' : ''}" data-url="${encodeURIComponent(h.url)}">
+      <div class="history-icon">${siteIcon(h.type)}</div>
+      <div class="history-info">
+        <div class="history-url">${shortUrl(h.url)}</div>
+        <div class="history-meta">
+          <span class="site-badge ${siteBadgeClass(h.type)}">${h.type}</span>
+          <span>${formatTime(h.ts)}</span>
+        </div>
+      </div>
+      <button class="history-delete" data-del="${encodeURIComponent(h.url)}" title="削除">×</button>
+    </div>
+  `).join('');
+
+  // events
+  container.querySelectorAll('.history-item').forEach(el => {
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('.history-delete')) return;
+      playUrl(decodeURIComponent(el.dataset.url));
+    });
+  });
+
+  container.querySelectorAll('.history-delete').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      removeFromHistory(decodeURIComponent(btn.dataset.del));
+    });
+  });
+}
+
+// ── Player ────────────────────────────────────────────────────────────────
+
+function playUrl(url) {
+  const info = detectType(url);
+  if (!info) {
+    toast('対応していないURLです');
+    return;
+  }
+
+  const html = buildEmbed(info);
+  if (!html) {
+    toast('再生できませんでした');
+    return;
+  }
+
+  const wrapper = document.getElementById('playerWrapper');
+  wrapper.innerHTML = html;
+
+  currentUrl = url;
+  document.getElementById('nowPlayingUrl').textContent = url;
+  document.getElementById('nowPlaying').classList.add('visible');
+  document.getElementById('urlInput').value = url;
+
+  addToHistory(url, info.type);
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────
+
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ── Events ────────────────────────────────────────────────────────────────
+
+document.getElementById('urlForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const url = document.getElementById('urlInput').value.trim();
+  if (!url) return;
+  playUrl(url);
+});
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  if (confirm('履歴をすべて削除しますか？')) {
+    clearHistory();
+    toast('履歴を削除しました');
+  }
+});
+
+// Paste URL anywhere (when not focused on input)
+document.addEventListener('paste', (e) => {
+  if (document.activeElement.id === 'urlInput') return;
+  const text = e.clipboardData.getData('text').trim();
+  if (text.startsWith('http')) {
+    document.getElementById('urlInput').value = text;
+    playUrl(text);
+  }
+});
+
+// Init
+renderHistory(null);
+</script>
+</body>
+</html>
